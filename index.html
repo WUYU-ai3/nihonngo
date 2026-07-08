@@ -1,0 +1,944 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎌 日语学习助手</title>
+<style>
+/* ===== CSS Variables & Reset ===== */
+:root {
+  --bg: #f5f0e8;
+  --surface: #ffffff;
+  --primary: #2c3e6b;
+  --primary-light: #3d5a8c;
+  --accent: #ba4a5a;
+  --accent-soft: #e8d5d8;
+  --sage: #6b8a7a;
+  --sage-light: #e8f0ec;
+  --gold: #c4a35a;
+  --gold-light: #faf3e0;
+  --text: #2c2c2c;
+  --text-secondary: #6b6b6b;
+  --text-muted: #999;
+  --border: #e8e3da;
+  --shadow: 0 2px 12px rgba(44, 62, 107, 0.08);
+  --shadow-lg: 0 8px 32px rgba(44, 62, 107, 0.12);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-xs: 6px;
+  --font-jp: "Hiragino Kaku Gothic ProN", "Hiragino Sans", "Yu Gothic", "Meiryo", "MS PGothic", sans-serif;
+  --font-cn: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: "SF Mono", "Cascadia Code", "Menlo", monospace;
+  --transition: 0.2s ease;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-cn);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Background pattern */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 20%, rgba(186, 74, 90, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(44, 62, 107, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 50%, rgba(196, 163, 90, 0.03) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ===== Header ===== */
+.header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.header-left { display: flex; align-items: center; gap: 10px; }
+.header-logo { font-size: 24px; }
+.header-title { font-size: 18px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; }
+.header-subtitle { font-size: 11px; color: var(--text-muted); }
+
+.header-actions { display: flex; gap: 8px; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 8px 14px; border: 1px solid var(--border);
+  border-radius: var(--radius-xs); font-size: 13px; cursor: pointer;
+  background: var(--surface); color: var(--text-secondary);
+  transition: all var(--transition); font-family: inherit;
+  white-space: nowrap;
+}
+.btn:hover { background: #f9f7f2; border-color: #ccc; color: var(--text); }
+.btn:active { transform: scale(0.97); }
+.btn-icon { font-size: 15px; }
+
+.btn-primary {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+  font-weight: 600;
+}
+.btn-primary:hover { background: var(--primary-light); border-color: var(--primary-light); color: #fff; }
+
+.conn-status { font-size: 11px; padding: 3px 8px; border-radius: 10px; white-space: nowrap; display: flex; align-items: center; }
+.conn-status.ok { color: var(--sage); background: var(--sage-light); }
+.conn-status.err { color: var(--accent); background: var(--accent-soft); }
+
+/* ===== Main Content ===== */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 800px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 16px;
+  position: relative;
+  z-index: 1;
+}
+
+/* ===== History Area ===== */
+.history {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ===== Empty State ===== */
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+}
+.empty-icon { font-size: 64px; margin-bottom: 16px; opacity: 0.8; }
+.empty-title { font-size: 20px; font-weight: 700; color: var(--text-secondary); margin-bottom: 8px; }
+.empty-desc { font-size: 14px; line-height: 1.8; max-width: 400px; }
+.empty-examples { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; justify-content: center; }
+.example-chip {
+  padding: 6px 14px; border-radius: 20px; font-size: 13px;
+  background: var(--surface); border: 1px solid var(--border);
+  cursor: pointer; transition: all var(--transition);
+}
+.example-chip:hover { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* ===== Translation Item ===== */
+.translation-item {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: slideIn 0.35s ease;
+}
+@keyframes slideIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ti-chinese {
+  padding: 14px 18px;
+  background: #fdfcfa;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.ti-chinese-label {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); padding: 2px 8px;
+  border-radius: 4px; white-space: nowrap; letter-spacing: 1px;
+}
+.ti-chinese-text { font-size: 16px; color: var(--text); font-weight: 500; word-break: break-word; }
+
+.ti-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+}
+@media (max-width: 600px) {
+  .ti-cards { grid-template-columns: 1fr; }
+}
+
+/* ===== Translation Card ===== */
+.tc {
+  background: var(--surface);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tc-header {
+  display: flex; align-items: center; gap: 8px;
+}
+.tc-badge {
+  font-size: 11px; font-weight: 700; padding: 3px 10px;
+  border-radius: 4px; letter-spacing: 1px;
+}
+.tc-badge.formal { background: var(--primary); color: #fff; }
+.tc-badge.casual { background: var(--sage); color: #fff; }
+.tc-context { font-size: 11px; color: var(--text-muted); }
+
+.tc-japanese {
+  font-family: var(--font-jp);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+.tc-reading-section { display: flex; flex-direction: column; gap: 4px; }
+.tc-reading-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
+.tc-hiragana {
+  font-family: var(--font-jp);
+  font-size: 15px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.tc-romaji {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-style: italic;
+  font-family: var(--font-mono);
+}
+
+.tc-explanation {
+  font-size: 12px; color: var(--sage);
+  background: var(--sage-light); padding: 8px 12px;
+  border-radius: var(--radius-xs); line-height: 1.5;
+}
+.tc-explanation::before { content: '💡 '; }
+
+.tc-actions { display: flex; gap: 6px; margin-top: auto; }
+.tc-copy-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 12px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: var(--radius-xs);
+  background: var(--surface); color: var(--text-secondary);
+  cursor: pointer; font-family: inherit;
+  transition: all var(--transition);
+}
+.tc-copy-btn:hover { background: #f9f7f2; border-color: #ccc; }
+.tc-copy-btn.copied { background: var(--sage-light); border-color: var(--sage); color: var(--sage); }
+
+/* ===== Loading Skeleton ===== */
+.skeleton {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  animation: slideIn 0.35s ease;
+}
+.skeleton-chinese { height: 20px; width: 60%; background: #eee; border-radius: 4px; margin-bottom: 16px; }
+.skeleton-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 600px) { .skeleton-cards { grid-template-columns: 1fr; } }
+.skeleton-card { display: flex; flex-direction: column; gap: 10px; }
+.skeleton-line { height: 14px; background: #f0f0f0; border-radius: 4px; animation: shimmer 1.5s infinite; }
+.skeleton-line.lg { height: 28px; width: 80%; }
+.skeleton-line.md { height: 16px; width: 90%; }
+.skeleton-line.sm { height: 12px; width: 60%; }
+@keyframes shimmer {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+/* ===== Input Area ===== */
+.input-area {
+  position: sticky;
+  bottom: 0;
+  background: linear-gradient(to top, var(--bg) 80%, transparent);
+  padding: 12px 0 20px;
+  z-index: 5;
+}
+.input-wrapper {
+  display: flex; gap: 8px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px;
+  box-shadow: var(--shadow-lg);
+  transition: border-color var(--transition);
+}
+.input-wrapper:focus-within { border-color: var(--primary); }
+
+.input-field {
+  flex: 1; border: none; outline: none;
+  font-size: 16px; padding: 10px 12px;
+  font-family: var(--font-cn); color: var(--text);
+  background: transparent; resize: none;
+  min-height: 24px; max-height: 120px;
+}
+.input-field::placeholder { color: #c0bab0; }
+
+.btn-send {
+  align-self: flex-end;
+  padding: 10px 20px;
+  background: var(--primary);
+  color: #fff; border: none;
+  border-radius: var(--radius-sm);
+  font-size: 15px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  transition: all var(--transition);
+  white-space: nowrap;
+}
+.btn-send:hover { background: var(--primary-light); }
+.btn-send:active { transform: scale(0.96); }
+.btn-send:disabled { background: #ccc; cursor: not-allowed; }
+
+/* ===== Modal ===== */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100; padding: 20px;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+.modal {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 28px;
+  max-width: 440px; width: 100%;
+  animation: slideUp 0.3s ease;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 8px; color: var(--primary); }
+.modal-desc { font-size: 13px; color: var(--text-secondary); margin-bottom: 20px; line-height: 1.6; }
+.modal-desc a { color: var(--primary); }
+.modal-label { font-size: 12px; font-weight: 700; color: var(--text-secondary); margin-bottom: 6px; display: block; text-transform: uppercase; letter-spacing: 0.5px; }
+.modal-input {
+  width: 100%; padding: 10px 14px; font-size: 14px;
+  border: 2px solid var(--border); border-radius: var(--radius-xs);
+  font-family: var(--font-mono); color: var(--text);
+  transition: border-color var(--transition);
+}
+.modal-input:focus { outline: none; border-color: var(--primary); }
+.modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+.modal-status { font-size: 12px; margin-top: 8px; padding: 6px 10px; border-radius: 4px; }
+.modal-status.success { background: #e8f5e9; color: #2e7d32; }
+.modal-status.error { background: #fce4ec; color: #c62828; }
+
+/* ===== Toast ===== */
+.toast-container {
+  position: fixed; top: 20px; right: 20px;
+  z-index: 200; display: flex; flex-direction: column;
+  gap: 8px; pointer-events: none;
+}
+.toast {
+  padding: 10px 18px; border-radius: var(--radius-xs);
+  font-size: 13px; font-weight: 600; color: #fff;
+  animation: toastIn 0.3s ease, toastOut 0.3s ease 2s forwards;
+  pointer-events: auto; box-shadow: var(--shadow-lg);
+}
+.toast.success { background: var(--sage); }
+.toast.error { background: var(--accent); }
+.toast.info { background: var(--primary); }
+@keyframes toastIn { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-10px); } }
+
+/* ===== Scrollbar ===== */
+.history::-webkit-scrollbar { width: 6px; }
+.history::-webkit-scrollbar-track { background: transparent; }
+.history::-webkit-scrollbar-thumb { background: #d5cfc6; border-radius: 3px; }
+
+/* ===== Responsive ===== */
+@media (max-width: 600px) {
+  .header { padding: 10px 14px; }
+  .header-title { font-size: 16px; }
+  .header-logo { font-size: 20px; }
+  .btn { padding: 6px 10px; font-size: 12px; }
+  .main { padding: 0 10px; }
+  .tc-japanese { font-size: 19px; }
+  .tc-hiragana { font-size: 14px; }
+  .tc-romaji { font-size: 12px; }
+  .input-field { font-size: 15px; }
+  .modal { padding: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-left">
+    <span class="header-logo">🎌</span>
+    <div>
+      <div class="header-title">日语学习助手</div>
+      <div class="header-subtitle">中文 → 敬语 & タメ口</div>
+    </div>
+  </div>
+  <div class="header-actions">
+    <span class="conn-status" id="connStatus">🔍 检测中...</span>
+    <button class="btn" onclick="openSettings()" title="API 设置">
+      <span class="btn-icon">⚙️</span> <span class="btn-label">API设置</span>
+    </button>
+    <button class="btn" onclick="clearHistory()" title="清空历史">
+      <span class="btn-icon">🗑️</span> <span class="btn-label">清空</span>
+    </button>
+  </div>
+</header>
+
+<!-- Main Content -->
+<main class="main">
+  <div class="history" id="history">
+    <!-- Empty State -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">📝</div>
+      <div class="empty-title">开始学习日语吧！</div>
+      <div class="empty-desc">
+        在下方输入中文句子，AI 会帮你生成两种日语表达：<br>
+        👔 <strong>敬语</strong>（丁寧語）— 对长辈、上司、刚认识的人<br>
+        😊 <strong>タメ口</strong>（随意体）— 对非常要好的朋友<br>
+        每种都附带假名读音和罗马字，轻松学习发音！
+      </div>
+      <div class="empty-examples">
+        <span class="example-chip" onclick="tryExample('你好，很高兴认识你')">你好，很高兴认识你</span>
+        <span class="example-chip" onclick="tryExample('谢谢你的帮助')">谢谢你的帮助</span>
+        <span class="example-chip" onclick="tryExample('今天天气真好')">今天天气真好</span>
+        <span class="example-chip" onclick="tryExample('不好意思，请问车站在哪里')">不好意思，请问车站在哪里</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Input Area -->
+  <div class="input-area">
+    <div class="input-wrapper">
+      <input
+        type="text"
+        class="input-field"
+        id="inputField"
+        placeholder="输入中文句子..."
+        autocomplete="off"
+      >
+      <button class="btn-send" id="sendBtn" onclick="translateText()">翻译 →</button>
+    </div>
+  </div>
+</main>
+
+<!-- Settings Modal -->
+<div class="modal-overlay" id="settingsModal" style="display:none;">
+  <div class="modal">
+    <div class="modal-title">⚙️ API 设置</div>
+    <div class="modal-desc">
+      可填写你自己的 DeepSeek API Key（可选，留空则用服务器共享 Key）。<br>
+      在 <a href="https://platform.deepseek.com/api_keys" target="_blank" rel="noopener">platform.deepseek.com</a> 免费注册获取。
+      
+    </div>
+    <label class="modal-label" for="apiKeyInput">API Key</label>
+    <input
+      type="password"
+      class="modal-input"
+      id="apiKeyInput"
+      placeholder="sk-..."
+      autocomplete="off"
+    >
+    <div class="modal-status" id="modalStatus" style="display:none;"></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveApiKey()">💾 保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toastContainer"></div>
+
+<script>
+/* ================================================================
+   Japanese Learner App — JavaScript
+   ================================================================ */
+
+// ===== Constants =====
+const STORAGE_KEY_HISTORY = 'jp-learner-history';
+const STORAGE_KEY_API_KEY = 'jp-learner-api-key';
+// 自动适配: 本地有代理就用本地，否则用 Vercel 线上 /api/translate
+let API_URL = 'http://localhost:3001';
+const MODEL = 'deepseek-chat';
+
+// ===== DOM Refs =====
+const historyEl = document.getElementById('history');
+const emptyStateEl = document.getElementById('emptyState');
+const inputField = document.getElementById('inputField');
+const sendBtn = document.getElementById('sendBtn');
+const settingsModal = document.getElementById('settingsModal');
+const apiKeyInput = document.getElementById('apiKeyInput');
+const modalStatus = document.getElementById('modalStatus');
+const toastContainer = document.getElementById('toastContainer');
+
+// ===== State =====
+let history = [];
+let isLoading = false;
+
+// ===== Init =====
+async function init() {
+  loadHistory();
+  loadApiKey();
+  renderHistory();
+  checkConnection();
+
+  // Enter to send
+  inputField.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !isLoading) {
+      e.preventDefault();
+      translateText();
+    }
+  });
+
+  // Close modal on overlay click
+  settingsModal.addEventListener('click', (e) => {
+    if (e.target === settingsModal) closeSettings();
+  });
+
+  // Escape to close modal
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeSettings();
+  });
+}
+
+// ===== Connection Check =====
+async function checkConnection() {
+  const statusEl = document.getElementById('connStatus');
+  // 1. 先试本地代理
+  try {
+    const resp = await fetch('http://localhost:3001/health', { method: 'GET', signal: AbortSignal.timeout(2000) });
+    if (resp.ok) {
+      API_URL = 'http://localhost:3001';
+      statusEl.textContent = '✅ 本地模式';
+      statusEl.className = 'conn-status ok';
+      return;
+    }
+  } catch (e) { /* 本地代理不可用，走线上 */ }
+
+  // 2. 没有本地代理，用同源 API（Vercel 部署后生效，本地 file:// 下无效但不报错）
+  API_URL = '/api/translate';
+  const isDeployed = window.location.hostname !== '' && window.location.hostname !== 'localhost';
+  if (isDeployed) {
+    statusEl.textContent = '☁️ 线上模式';
+    statusEl.className = 'conn-status ok';
+  } else {
+    statusEl.textContent = '⚠️ 代理未启动，部署后可用';
+    statusEl.className = 'conn-status err';
+  }
+}
+
+// ===== Storage Helpers =====
+function loadHistory() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_HISTORY);
+    history = raw ? JSON.parse(raw) : [];
+  } catch { history = []; }
+}
+
+function saveHistory() {
+  // Keep last 50 entries
+  if (history.length > 50) history = history.slice(-50);
+  localStorage.setItem(STORAGE_KEY_HISTORY, JSON.stringify(history));
+}
+
+function loadApiKey() {
+  const key = localStorage.getItem(STORAGE_KEY_API_KEY);
+  if (key) apiKeyInput.value = key;
+}
+
+function getApiKey() {
+  return localStorage.getItem(STORAGE_KEY_API_KEY) || '';
+}
+
+// ===== Toast =====
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  toastContainer.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ===== Modal =====
+function openSettings() {
+  apiKeyInput.value = getApiKey();
+  modalStatus.style.display = 'none';
+  settingsModal.style.display = 'flex';
+  setTimeout(() => apiKeyInput.focus(), 100);
+}
+
+function closeSettings() {
+  settingsModal.style.display = 'none';
+}
+
+function saveApiKey() {
+  const key = apiKeyInput.value.trim();
+  localStorage.setItem(STORAGE_KEY_API_KEY, key);
+  modalStatus.style.display = 'block';
+  modalStatus.className = 'modal-status success';
+  modalStatus.textContent = key ? '✅ 已保存你的 Key' : '✅ 将使用服务器共享 Key';
+  setTimeout(closeSettings, 800);
+}
+
+// ===== History =====
+function clearHistory() {
+  if (history.length === 0) {
+    showToast('历史记录已经是空的', 'info');
+    return;
+  }
+  if (!confirm(`确定要清空全部 ${history.length} 条翻译记录吗？`)) return;
+  history = [];
+  saveHistory();
+  renderHistory();
+  showToast('历史记录已清空', 'success');
+}
+
+// ===== Copy =====
+async function copyText(text, buttonEl) {
+  try {
+    await navigator.clipboard.writeText(text);
+    const originalHTML = buttonEl.innerHTML;
+    buttonEl.innerHTML = '✅ 已复制';
+    buttonEl.classList.add('copied');
+    setTimeout(() => {
+      buttonEl.innerHTML = originalHTML;
+      buttonEl.classList.remove('copied');
+    }, 1800);
+  } catch {
+    // Fallback
+    const ta = document.createElement('textarea');
+    ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    showToast('已复制到剪贴板', 'success');
+  }
+}
+
+// ===== Try Example =====
+function tryExample(text) {
+  inputField.value = text;
+  inputField.focus();
+  translateText();
+}
+
+// ===== Translation =====
+async function translateText() {
+  const chinese = inputField.value.trim();
+  if (!chinese) return;
+  if (isLoading) return;
+
+  // Key 可选：部署版由服务器提供，本地版才需要自己填
+  const apiKey = getApiKey();
+
+  // Disable input
+  isLoading = true;
+  sendBtn.disabled = true;
+  inputField.disabled = true;
+  sendBtn.textContent = '...';
+
+  // Add skeleton
+  const skeletonId = addSkeleton(chinese);
+
+  try {
+    const result = await callDeepSeekAPI(apiKey, chinese);
+    removeSkeleton(skeletonId);
+
+    // Add to history
+    const entry = {
+      id: Date.now(),
+      chinese,
+      formal: result.formal,
+      casual: result.casual,
+      timestamp: new Date().toISOString(),
+    };
+    history.push(entry);
+    saveHistory();
+    renderHistory();
+
+    // Scroll to bottom
+    historyEl.scrollTop = historyEl.scrollHeight;
+
+    // Clear input
+    inputField.value = '';
+  } catch (err) {
+    removeSkeleton(skeletonId);
+    console.error('Translation error:', err);
+
+    // Detailed error diagnostics
+    let errorMsg = err.message || '未知错误';
+    if (errorMsg.includes('Failed to fetch') || errorMsg.includes('NetworkError')) {
+      errorMsg = '无法连接代理 — 请确认已运行 python3 proxy.py，然后刷新页面';
+    } else if (errorMsg.includes('Authentication Fails') || errorMsg.includes('invalid')) {
+      errorMsg = 'API Key 无效 — 如果你是站长，请在 Vercel 环境变量中更新 DEEPSEEK_API_KEY；访客请尝试在设置中填写自己的 Key';
+    } else if (errorMsg.includes('余额') || errorMsg.includes('Insufficient') || errorMsg.includes('402')) {
+      errorMsg = 'DeepSeek 账户余额不足 — 请站长前往 platform.deepseek.com 充值';
+    } else if (errorMsg.includes('未配置')) {
+      errorMsg = '服务器未配置 API Key — 请在设置中填写你自己的 DeepSeek Key（platform.deepseek.com 免费注册）';
+    }
+    showToast(`翻译失败: ${errorMsg}`, 'error');
+  } finally {
+    isLoading = false;
+    sendBtn.disabled = false;
+    inputField.disabled = false;
+    sendBtn.textContent = '翻译 →';
+    inputField.focus();
+  }
+}
+
+// ===== API Call =====
+async function callDeepSeekAPI(apiKey, chineseText) {
+  const prompt = `你是一位专业的日语教师。请将以下中文句子翻译成日语，提供两个版本。
+
+**要求：**
+1. **敬语/丁寧語（formal）**：对长辈、上司、客户或刚认识的人使用的礼貌表达。使用「です・ます」体。
+2. **タメ口/随意体（casual）**：对非常要好的朋友、家人使用的随意表达。使用简体。
+
+**对每个版本，请提供：**
+- japanese: 自然的日语表达（汉字与假名混用，如正常日语书写）
+- hiragana: 纯平假名读音（整个句子的假名注音）
+- romaji: 罗马字读音（使用 Hepburn 式罗马字）
+- explanation: 简短解释（1-2句中文），说明这句话中使用的敬语特征或口语缩略形式，帮助学习者理解
+
+**严格输出以下 JSON 格式（不要 markdown 代码块标记，直接输出纯 JSON）：**
+
+{
+  "formal": {
+    "japanese": "...",
+    "hiragana": "...",
+    "romaji": "...",
+    "explanation": "..."
+  },
+  "casual": {
+    "japanese": "...",
+    "hiragana": "...",
+    "romaji": "...",
+    "explanation": "..."
+  }
+}
+
+中文句子：${chineseText}`;
+
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 1024,
+      temperature: 0.7,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text().catch(() => '');
+    let msg = `API 错误 (${response.status})`;
+    if (response.status === 401) msg = 'API Key 无效，请在设置中检查';
+    else if (response.status === 429) msg = '请求太频繁，请稍后再试';
+    else if (response.status === 402) msg = '账户余额不足，请检查 DeepSeek 账户';
+    else if (response.status === 403) msg = 'API Key 没有权限，请检查账户状态';
+    else if (response.status >= 500) msg = '服务器错误，请稍后重试';
+    throw new Error(msg + (errorBody ? ` — ${errorBody.slice(0, 200)}` : ''));
+  }
+
+  const data = await response.json();
+  // DeepSeek / OpenAI format: data.choices[0].message.content
+  const content = data?.choices?.[0]?.message?.content || '';
+
+  // Parse JSON from response
+  return parseTranslationJSON(content);
+}
+
+function parseTranslationJSON(text) {
+  let jsonStr = text.trim();
+
+  // Remove possible markdown code block
+  const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
+  if (codeBlockMatch) {
+    jsonStr = codeBlockMatch[1].trim();
+  }
+
+  // Try to extract JSON object
+  const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    jsonStr = jsonMatch[0];
+  }
+
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonStr);
+  } catch (e) {
+    throw new Error('无法解析翻译结果，请重试');
+  }
+
+  // Validate structure
+  if (!parsed.formal?.japanese || !parsed.casual?.japanese) {
+    throw new Error('翻译结果格式不完整，请重试');
+  }
+
+  // Ensure all fields exist with defaults
+  return {
+    formal: {
+      japanese: parsed.formal.japanese || '',
+      hiragana: parsed.formal.hiragana || '',
+      romaji: parsed.formal.romaji || '',
+      explanation: parsed.formal.explanation || '',
+    },
+    casual: {
+      japanese: parsed.casual.japanese || '',
+      hiragana: parsed.casual.hiragana || '',
+      romaji: parsed.casual.romaji || '',
+      explanation: parsed.casual.explanation || '',
+    },
+  };
+}
+
+// ===== Skeleton =====
+function addSkeleton(chinese) {
+  const id = 'skeleton-' + Date.now();
+  const el = document.createElement('div');
+  el.className = 'skeleton';
+  el.id = id;
+  el.innerHTML = `
+    <div class="skeleton-chinese"></div>
+    <div class="skeleton-cards">
+      <div class="skeleton-card">
+        <div class="skeleton-line lg"></div>
+        <div class="skeleton-line md"></div>
+        <div class="skeleton-line sm"></div>
+      </div>
+      <div class="skeleton-card">
+        <div class="skeleton-line lg"></div>
+        <div class="skeleton-line md"></div>
+        <div class="skeleton-line sm"></div>
+      </div>
+    </div>
+  `;
+  historyEl.appendChild(el);
+  historyEl.scrollTop = historyEl.scrollHeight;
+  return id;
+}
+
+function removeSkeleton(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+}
+
+// ===== Render =====
+function renderHistory() {
+  // Clear existing items (keep empty state)
+  historyEl.querySelectorAll('.translation-item, .skeleton').forEach(el => el.remove());
+
+  if (history.length === 0) {
+    emptyStateEl.style.display = '';
+    return;
+  }
+
+  emptyStateEl.style.display = 'none';
+
+  history.forEach((entry) => {
+    const el = createTranslationItem(entry);
+    historyEl.appendChild(el);
+  });
+
+  // Scroll to bottom
+  historyEl.scrollTop = historyEl.scrollHeight;
+}
+
+function createTranslationItem(entry) {
+  const el = document.createElement('div');
+  el.className = 'translation-item';
+
+  const timeStr = new Date(entry.timestamp).toLocaleString('zh-CN', {
+    month: 'numeric', day: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+
+  el.innerHTML = `
+    <div class="ti-chinese">
+      <span class="ti-chinese-label">中文</span>
+      <span class="ti-chinese-text">${escapeHTML(entry.chinese)}</span>
+    </div>
+    <div class="ti-cards">
+      ${renderCard('formal', '👔 敬语（丁寧語）', '对长辈 · 上司 · 刚认识的人', entry.formal)}
+      ${renderCard('casual', '😊 タメ口（随意体）', '对好朋友 · 家人 · 亲密的人', entry.casual)}
+    </div>
+  `;
+
+  // Attach copy handlers
+  el.querySelectorAll('.tc-copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const text = this.dataset.copy;
+      copyText(text, this);
+    });
+  });
+
+  return el;
+}
+
+function renderCard(type, title, context, data) {
+  return `
+    <div class="tc">
+      <div class="tc-header">
+        <span class="tc-badge ${type}">${title.split(' ')[0]} ${title.split('（')[1]?.replace('）','') || ''}</span>
+        <span class="tc-context">${context}</span>
+      </div>
+      <div class="tc-japanese">${escapeHTML(data.japanese)}</div>
+      <div class="tc-reading-section">
+        <span class="tc-reading-label">📖 平假名读音</span>
+        <span class="tc-hiragana">${escapeHTML(data.hiragana)}</span>
+      </div>
+      <div class="tc-reading-section">
+        <span class="tc-reading-label">🔤 罗马字读音</span>
+        <span class="tc-romaji">${escapeHTML(data.romaji)}</span>
+      </div>
+      ${data.explanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
+      <div class="tc-actions">
+        <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 复制日文</button>
+        <button class="tc-copy-btn" data-copy="${escapeAttr(data.hiragana)}">📋 复制假名</button>
+      </div>
+    </div>
+  `;
+}
+
+// ===== Utility =====
+function escapeHTML(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+function escapeAttr(str) {
+  return str.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ===== Boot =====
+init();
+</script>
+</body>
+</html>
