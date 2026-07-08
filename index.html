@@ -918,7 +918,9 @@ function toRuby(text) {
 
 function renderVariant(label, labelClass, data) {
   if (!data.japanese) return '';
-  const hasExplanation = data.explanation && !/^(朋友|对长辈|对上司|简体|随意|礼貌|タメ口|丁寧|普通|一般).*/.test(data.explanation);
+  // 过滤废话解释：朋友间/对长辈 之类、絵文字颜文字描述、营造氛围之类、用缩略/省略之类
+  const dull = /(朋友|长辈|上司|简体|随意|礼貌|タメ口|丁寧|普通|一般|絵文字|颜文字|颜文字|营造.*氛围|加了.*表现|省略|缩略|SNS|用了.*方式|加了.*星星|加了.*脚印|使.*生动|更加.*自然)/;
+  const hasExplanation = data.explanation && !dull.test(data.explanation);
   return `
     <div class="tv">
       <span class="tv-badge ${labelClass}">${label}</span>
