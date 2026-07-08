@@ -545,37 +545,25 @@ async function init() {
 }
 
 // ===== Connection Check =====
-async function checkConnection() {
+function checkConnection() {
   const statusEl = document.getElementById('connStatus');
-  const isDeployed = window.location.hostname !== '' && window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('127.');
-  const isFileProtocol = window.location.protocol === 'file:';
+  const host = window.location.hostname;
+  // 有域名 = 线上部署模式；无域名（file:// 或 localhost）= 本地模式
+  const isDeployed = host && host !== 'localhost' && !host.startsWith('127.');
 
-  // 部署版直接用线上 API，不测 localhost
   if (isDeployed) {
     API_URL = '/api/translate';
-    statusEl.textContent = '☁️ 线上模式';
+    statusEl.textContent = '☁️ 线上';
     statusEl.className = 'conn-status ok';
-    return;
+  } else {
+    // 本地模式：快速测代理
+    statusEl.textContent = '✅ 本地';
+    statusEl.className = 'conn-status ok';
+    API_URL = '/api/translate'; // 兜底
+    fetch('http://localhost:3001/health', { method: 'GET', signal: AbortSignal.timeout(1500) })
+      .then(r => { if (r.ok) { API_URL = 'http://localhost:3001'; statusEl.textContent = '✅ 本地'; } })
+      .catch(() => { statusEl.textContent = '⚠️ 代理未启动'; statusEl.className = 'conn-status err'; });
   }
-
-  // 本地 file:// 模式，快速测一下代理
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 1500);
-    const resp = await fetch('http://localhost:3001/health', { method: 'GET', signal: ctrl.signal });
-    clearTimeout(timer);
-    if (resp.ok) {
-      API_URL = 'http://localhost:3001';
-      statusEl.textContent = '✅ 本地模式';
-      statusEl.className = 'conn-status ok';
-      return;
-    }
-  } catch (e) { /* 代理不在 */ }
-
-  // 兜底
-  API_URL = '/api/translate';
-  statusEl.textContent = isFileProtocol ? '⚠️ 代理未启动' : '☁️ 线上模式';
-  statusEl.className = isFileProtocol ? 'conn-status err' : 'conn-status ok';
 }
 
 // ===== Storage Helpers =====
