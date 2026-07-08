@@ -72,8 +72,7 @@ body::before {
   box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
-.header-left { display: flex; align-items: center; gap: 10px; }
-.header-logo { font-size: 24px; }
+.header-left { display: flex; align-items: center; gap: 10px; padding-left: 4px; }
 .header-title { font-size: 18px; font-weight: 700; color: var(--primary); letter-spacing: 0.5px; }
 .header-subtitle { font-size: 11px; color: var(--text-muted); }
 
@@ -199,7 +198,29 @@ body::before {
 }
 .tc-badge.formal { background: var(--primary); color: #fff; }
 .tc-badge.casual { background: var(--sage); color: #fff; }
+.tc-badge.kicchiri { background: var(--primary); color: #fff; font-size: 12px; }
+.tc-badge.frank { background: #c4793e; color: #fff; font-size: 12px; }
 .tc-context { font-size: 11px; color: var(--text-muted); }
+
+/* ===== Variant within card ===== */
+.tv { padding: 14px 0; border-top: 1px solid var(--border); }
+.tv:first-of-type { border-top: none; padding-top: 12px; }
+.tv-badge {
+  display: inline-block; font-size: 10px; font-weight: 700; padding: 2px 8px;
+  border-radius: 3px; margin-bottom: 8px; letter-spacing: 0.5px;
+}
+.tv-badge.teineigo { background: #e8edf5; color: var(--primary); }
+.tv-badge.keigo { background: #ede8f5; color: #5b3d8c; }
+.tv-badge.tameguchi { background: #f5efe8; color: #8c6b3d; }
+.tv-badge.netslang { background: #f5e8f0; color: #8c3d6b; }
+.tv-japanese {
+  font-family: var(--font-jp);
+  font-size: 19px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 2.1;
+  word-break: break-word;
+}
 
 .tc-japanese {
   font-family: var(--font-jp);
@@ -377,6 +398,7 @@ body::before {
   .btn { padding: 6px 10px; font-size: 12px; }
   .main { padding: 0 10px; }
   .tc-japanese { font-size: 19px; }
+  .tv-japanese { font-size: 17px; }
   .tc-hiragana { font-size: 14px; }
   .tc-romaji { font-size: 12px; }
   .input-field { font-size: 15px; }
@@ -389,10 +411,9 @@ body::before {
 <!-- Header -->
 <header class="header">
   <div class="header-left">
-    <span class="header-logo">🎌</span>
     <div>
-      <div class="header-title">日语学习助手</div>
-      <div class="header-subtitle">中文 → 敬语 & タメ口</div>
+      <div class="header-title">日本語、盛っとく？</div>
+      <div class="header-subtitle">中文 → キッチリ & フランク</div>
     </div>
   </div>
   <div class="header-actions">
@@ -415,9 +436,9 @@ body::before {
       <div class="empty-title">开始学习日语吧！</div>
       <div class="empty-desc">
         在下方输入中文句子，AI 会帮你生成两种日语表达：<br>
-        👔 <strong>敬语</strong>（丁寧語）— 对长辈、上司、刚认识的人<br>
-        😊 <strong>タメ口</strong>（随意体）— 对非常要好的朋友<br>
-        每种都附带假名读音和罗马字，轻松学习发音！
+        👔 <strong>キッチリ</strong> — 丁寧語 + 敬語<br>
+        😎 <strong>フランク</strong> — タメ口 + 若者言葉<br>
+        汉字旁直接标注假名读音，轻松学习！
       </div>
       <div class="empty-examples">
         <span class="example-chip" onclick="tryExample('你好，很高兴认识你')">你好，很高兴认识你</span>
@@ -670,8 +691,8 @@ async function translateText() {
     const entry = {
       id: Date.now(),
       chinese,
-      formal: result.formal,
-      casual: result.casual,
+      kicchiri: result.kicchiri,
+      frank: result.frank,
       timestamp: new Date().toISOString(),
     };
     history.push(entry);
@@ -710,34 +731,38 @@ async function translateText() {
 
 // ===== API Call =====
 async function callDeepSeekAPI(apiKey, chineseText) {
-  const prompt = `你是一位专业的日语教师。请将以下中文句子翻译成日语，提供两个版本。
+  const prompt = `你是一位专业的日语教师。请将以下中文句子翻译成日语。
 
-**要求：**
-1. **敬语/丁寧語（formal）**：对长辈、上司、客户或刚认识的人使用的礼貌表达。使用「です・ます」体。
-2. **タメ口/随意体（casual）**：对非常要好的朋友、家人使用的随意表达。使用简体。
-
-**对每个版本，请提供：**
-- japanese: 自然的日语表达（汉字与假名混用，如正常日语书写）
-- hiragana: 纯平假名读音（整个句子的假名注音）
-- romaji: 罗马字读音（使用 Hepburn 式罗马字）
-- explanation: 简短解释（1-2句中文），说明这句话中使用的敬语特征或口语缩略形式，帮助学习者理解
-
-**严格输出以下 JSON 格式（不要 markdown 代码块标记，直接输出纯 JSON）：**
+**输出格式（严格 JSON，不要 markdown 代码块）：**
 
 {
-  "formal": {
-    "japanese": "...",
-    "hiragana": "...",
-    "romaji": "...",
-    "explanation": "..."
+  "kicchiri": {
+    "teineigo": {
+      "japanese": "丁寧語表达（汉字后面用括号标注假名读音，如：日本語(にほんご)を勉強(べんきょう)しています）",
+      "explanation": "简短说明敬语特征（中文）"
+    },
+    "keigo": {
+      "japanese": "敬語表达（比丁寧語更高级的尊敬语或谦让语）",
+      "explanation": "简短说明敬语特征（中文）"
+    }
   },
-  "casual": {
-    "japanese": "...",
-    "hiragana": "...",
-    "romaji": "...",
-    "explanation": "..."
+  "frank": {
+    "tameguchi": {
+      "japanese": "タメ口表达（简体，对朋友的说法）",
+      "explanation": "简短说明口语特征（中文）"
+    },
+    "netSlang": {
+      "japanese": "年轻人网络用语/流行说法（没有合适的就留空字符串""）",
+      "explanation": "简短说明（没有就留空）"
+    }
   }
 }
+
+**要求：**
+1. kicchiri 部分：teineigo 用「です・ます」体；keigo 用更高级的敬语（尊敬語/謙譲語）
+2. frank 部分：tameguchi 用简体；netSlang 用若者言葉/网络流行语，没有合适的就留空
+3. japanese 字段中，每个汉字的读音用括号紧跟该汉字标注，如：今日(きょう)は天気(てんき)が良(よ)くて気持(きも)ちいい
+4. 只输出 JSON，不要任何额外文字
 
 中文句子：${chineseText}`;
 
@@ -767,53 +792,34 @@ async function callDeepSeekAPI(apiKey, chineseText) {
   }
 
   const data = await response.json();
-  // DeepSeek / OpenAI format: data.choices[0].message.content
   const content = data?.choices?.[0]?.message?.content || '';
-
-  // Parse JSON from response
   return parseTranslationJSON(content);
 }
 
 function parseTranslationJSON(text) {
   let jsonStr = text.trim();
-
   // Remove possible markdown code block
   const codeBlockMatch = jsonStr.match(/```(?:json)?\s*\n?([\s\S]*?)```/);
-  if (codeBlockMatch) {
-    jsonStr = codeBlockMatch[1].trim();
-  }
-
-  // Try to extract JSON object
+  if (codeBlockMatch) jsonStr = codeBlockMatch[1].trim();
+  // Extract JSON object
   const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[0];
-  }
+  if (jsonMatch) jsonStr = jsonMatch[0];
 
   let parsed;
-  try {
-    parsed = JSON.parse(jsonStr);
-  } catch (e) {
-    throw new Error('无法解析翻译结果，请重试');
-  }
+  try { parsed = JSON.parse(jsonStr); }
+  catch (e) { throw new Error('无法解析翻译结果，请重试'); }
 
-  // Validate structure
-  if (!parsed.formal?.japanese || !parsed.casual?.japanese) {
-    throw new Error('翻译结果格式不完整，请重试');
-  }
-
-  // Ensure all fields exist with defaults
+  // Validate & normalize
+  const k = parsed.kicchiri || {};
+  const f = parsed.frank || {};
   return {
-    formal: {
-      japanese: parsed.formal.japanese || '',
-      hiragana: parsed.formal.hiragana || '',
-      romaji: parsed.formal.romaji || '',
-      explanation: parsed.formal.explanation || '',
+    kicchiri: {
+      teineigo: { japanese: k.teineigo?.japanese || '', explanation: k.teineigo?.explanation || '' },
+      keigo:    { japanese: k.keigo?.japanese || '',    explanation: k.keigo?.explanation || '' },
     },
-    casual: {
-      japanese: parsed.casual.japanese || '',
-      hiragana: parsed.casual.hiragana || '',
-      romaji: parsed.casual.romaji || '',
-      explanation: parsed.casual.explanation || '',
+    frank: {
+      tameguchi: { japanese: f.tameguchi?.japanese || '', explanation: f.tameguchi?.explanation || '' },
+      netSlang:  { japanese: f.netSlang?.japanese || '',  explanation: f.netSlang?.explanation || '' },
     },
   };
 }
@@ -874,54 +880,63 @@ function createTranslationItem(entry) {
   const el = document.createElement('div');
   el.className = 'translation-item';
 
-  const timeStr = new Date(entry.timestamp).toLocaleString('zh-CN', {
-    month: 'numeric', day: 'numeric',
-    hour: '2-digit', minute: '2-digit',
-  });
-
   el.innerHTML = `
     <div class="ti-chinese">
       <span class="ti-chinese-label">中文</span>
       <span class="ti-chinese-text">${escapeHTML(entry.chinese)}</span>
     </div>
     <div class="ti-cards">
-      ${renderCard('formal', '👔 敬语（丁寧語）', '对长辈 · 上司 · 刚认识的人', entry.formal)}
-      ${renderCard('casual', '😊 タメ口（随意体）', '对好朋友 · 家人 · 亲密的人', entry.casual)}
+      ${renderKicchiri(entry.kicchiri)}
+      ${renderFrank(entry.frank)}
     </div>
   `;
 
   // Attach copy handlers
   el.querySelectorAll('.tc-copy-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-      const text = this.dataset.copy;
-      copyText(text, this);
+      // Strip furigana parens for clean copy: 日本語(にほんご) → 日本語
+      const raw = this.dataset.copy.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
+      copyText(raw, this);
     });
   });
 
   return el;
 }
 
-function renderCard(type, title, context, data) {
+function renderVariant(label, labelClass, data) {
+  if (!data.japanese) return '';
+  return `
+    <div class="tv">
+      <span class="tv-badge ${labelClass}">${label}</span>
+      <div class="tv-japanese">${escapeHTML(data.japanese)}</div>
+      ${data.explanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
+      <div class="tc-actions">
+        <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 复制</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderKicchiri(d) {
   return `
     <div class="tc">
       <div class="tc-header">
-        <span class="tc-badge ${type}">${title.split(' ')[0]} ${title.split('（')[1]?.replace('）','') || ''}</span>
-        <span class="tc-context">${context}</span>
+        <span class="tc-badge kicchiri">👔 キッチリ</span>
       </div>
-      <div class="tc-japanese">${escapeHTML(data.japanese)}</div>
-      <div class="tc-reading-section">
-        <span class="tc-reading-label">📖 平假名读音</span>
-        <span class="tc-hiragana">${escapeHTML(data.hiragana)}</span>
+      ${renderVariant('丁寧語', 'teineigo', d.teineigo)}
+      ${renderVariant('敬語', 'keigo', d.keigo)}
+    </div>
+  `;
+}
+
+function renderFrank(d) {
+  return `
+    <div class="tc">
+      <div class="tc-header">
+        <span class="tc-badge frank">😎 フランク</span>
       </div>
-      <div class="tc-reading-section">
-        <span class="tc-reading-label">🔤 罗马字读音</span>
-        <span class="tc-romaji">${escapeHTML(data.romaji)}</span>
-      </div>
-      ${data.explanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
-      <div class="tc-actions">
-        <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 复制日文</button>
-        <button class="tc-copy-btn" data-copy="${escapeAttr(data.hiragana)}">📋 复制假名</button>
-      </div>
+      ${renderVariant('タメ口', 'tameguchi', d.tameguchi)}
+      ${renderVariant('ネット用語', 'netslang', d.netSlang)}
     </div>
   `;
 }
