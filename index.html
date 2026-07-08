@@ -218,8 +218,13 @@ body::before {
   font-size: 19px;
   font-weight: 500;
   color: var(--text);
-  line-height: 2.1;
+  line-height: 2.6;
   word-break: break-word;
+}
+.tv-japanese rt {
+  font-size: 0.5em;
+  color: #4a8bc2;
+  font-weight: 400;
 }
 
 .tc-japanese {
@@ -456,7 +461,7 @@ body::before {
         type="text"
         class="input-field"
         id="inputField"
-        placeholder="输入中文句子..."
+        placeholder="その一言、任せて"
         autocomplete="off"
       >
       <button class="btn-send" id="sendBtn" onclick="translateText()">翻译 →</button>
@@ -734,31 +739,31 @@ async function callDeepSeekAPI(apiKey, chineseText) {
 {
   "kicchiri": {
     "teineigo": {
-      "japanese": "丁寧語表达（汉字后面用括号标注假名读音，如：日本語(にほんご)を勉強(べんきょう)しています）",
-      "explanation": "简短说明敬语特征（中文）"
+      "japanese": "丁寧語（汉字后括号标假名，如：今日(きょう)は天気(てんき)が良(よ)い）",
+      "explanation": "只在有不明显的敬语特征时才写说明，普通ですます体不需要解释，留空"
     },
     "keigo": {
-      "japanese": "敬語表达（比丁寧語更高级的尊敬语或谦让语）",
-      "explanation": "简短说明敬语特征（中文）"
+      "japanese": "敬語（尊敬語/謙譲語，比丁寧語更高级）",
+      "explanation": "只在有不明显的敬语特征时才写说明，留空也可以"
     }
   },
   "frank": {
     "tameguchi": {
-      "japanese": "タメ口表达（简体，对朋友的说法）",
-      "explanation": "简短说明口语特征（中文）"
+      "japanese": "タメ口（简体）",
+      "explanation": "只在有不明显的口语特征时才写说明，普通简体不需要解释，留空"
     },
     "netSlang": {
-      "japanese": "年轻人网络用语/流行说法（没有合适的就留空字符串""）",
-      "explanation": "简短说明（没有就留空）"
+      "japanese": "ネット用語。タメ口をさらに崩して、〜（波ダッシュ）や絵文字🐷💦✨などを積極的に使って、SNSのノリで生き生きと表現してください。例：お疲れ様→おつ〜、ありがとう→ありがとん🐷。语尾可以自由发挥（にゃ/だお/やで etc）。没有合适的网络说法就留空",
+      "explanation": "如果有用到语吕合わせ、语尾アレンジ、絵文字の意味などを簡洁说明（中文），普通のタメ口不需要解释，留空"
     }
   }
 }
 
-**要求：**
-1. kicchiri 部分：teineigo 用「です・ます」体；keigo 用更高级的敬语（尊敬語/謙譲語）
-2. frank 部分：tameguchi 用简体；netSlang 用若者言葉/网络流行语，没有合适的就留空
-3. japanese 字段中，每个汉字的读音用括号紧跟该汉字标注，如：今日(きょう)は天気(てんき)が良(よ)くて気持(きも)ちいい
-4. 只输出 JSON，不要任何额外文字
+**严格要求：**
+1. 每个汉字后面紧跟括号标注平假名读音，如：今日(きょう)は天気(てんき)が良(よ)い
+2. explanation 只写有价值的（如特殊敬语用法、ネット用語の语吕合わせ来源），"朋友间随意表达""对长辈的礼貌说法"之类废话一律留空
+3. netSlang 要真的像日本年轻人聊天那样，〜和絵文字让表达生动活泼
+4. 只输出 JSON
 
 中文句子：${chineseText}`;
 
@@ -904,13 +909,21 @@ function createTranslationItem(entry) {
   return el;
 }
 
+function toRuby(text) {
+  // 漢字(かんじ) → <ruby>漢字<rt>かんじ</rt></ruby>
+  if (!text) return '';
+  return text.replace(/([\p{Script=Han}々]+)\(([\p{Script=Hiragana}ァ-ヴー・]+)\)/gu,
+    '<ruby>$1<rt>$2</rt></ruby>');
+}
+
 function renderVariant(label, labelClass, data) {
   if (!data.japanese) return '';
+  const hasExplanation = data.explanation && !/^(朋友|对长辈|对上司|简体|随意|礼貌|タメ口|丁寧|普通|一般).*/.test(data.explanation);
   return `
     <div class="tv">
       <span class="tv-badge ${labelClass}">${label}</span>
-      <div class="tv-japanese">${escapeHTML(data.japanese)}</div>
-      ${data.explanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
+      <div class="tv-japanese">${toRuby(escapeHTML(data.japanese))}</div>
+      ${hasExplanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
       <div class="tc-actions">
         <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 复制</button>
       </div>
