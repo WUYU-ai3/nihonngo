@@ -864,6 +864,11 @@ function renderHistory() {
   emptyStateEl.style.display = 'none';
 
   history.forEach((entry) => {
+    // 兼容旧格式：formal/casual → kicchiri/frank
+    if (entry.formal && !entry.kicchiri) {
+      entry.kicchiri = { teineigo: entry.formal, keigo: { japanese: '', explanation: '' } };
+      entry.frank = { tameguchi: entry.casual, netSlang: { japanese: '', explanation: '' } };
+    }
     const el = createTranslationItem(entry);
     historyEl.appendChild(el);
   });
@@ -914,25 +919,27 @@ function renderVariant(label, labelClass, data) {
 }
 
 function renderKicchiri(d) {
+  if (!d) return '';
   return `
     <div class="tc">
       <div class="tc-header">
         <span class="tc-badge kicchiri">👔 キッチリ</span>
       </div>
-      ${renderVariant('丁寧語', 'teineigo', d.teineigo)}
-      ${renderVariant('敬語', 'keigo', d.keigo)}
+      ${renderVariant('丁寧語', 'teineigo', d.teineigo || {})}
+      ${renderVariant('敬語', 'keigo', d.keigo || {})}
     </div>
   `;
 }
 
 function renderFrank(d) {
+  if (!d) return '';
   return `
     <div class="tc">
       <div class="tc-header">
         <span class="tc-badge frank">😎 フランク</span>
       </div>
-      ${renderVariant('タメ口', 'tameguchi', d.tameguchi)}
-      ${renderVariant('ネット用語', 'netslang', d.netSlang)}
+      ${renderVariant('タメ口', 'tameguchi', d.tameguchi || {})}
+      ${renderVariant('ネット用語', 'netslang', d.netSlang || {})}
     </div>
   `;
 }
