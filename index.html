@@ -655,60 +655,34 @@ function clearHistory() {
 }
 
 // ===== Speak =====
-let JA_VOICES = [];
-
-function loadVoices() {
-  JA_VOICES = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
-}
-speechSynthesis.onvoiceschanged = loadVoices;
-loadVoices();
-
-function pickVoice() {
-  if (!JA_VOICES.length) JA_VOICES = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
-  const female = JA_VOICES.filter(v => v.name.includes('Google') || !/(Otoya|Male|男)/.test(v.name));
-  const pool = female.length ? female : JA_VOICES;
-  const pref = ['Google 日本語', 'Kyoko', 'Hattori', 'O-ren', 'Moira', 'Luca'];
-  for (const name of pref) {
-    const v = pool.find(v => v.name.includes(name));
-    if (v) return v;
-  }
-  return pool[0] || null;
-}
-
-function speakJapanese(text) {
+async function speakJapanese(text) {
   // 去括号注音・去絵文字
   let clean = text.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
   clean = clean.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{200C}]/gu, '').trim();
   if (!clean) return;
 
+  // 线上用神经网络 TTS，本地 fallback 到浏览器 TTS
+  if (API_URL === '/api/translate') {
+    try {
+      const resp = await fetch('/api/speak', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: clean }),
+      });
+      if (resp.ok) {
+        const blob = await resp.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.play();
+        return;
+      }
+    } catch (e) { /* fallback */ }
+  }
+
+  // 浏览器 TTS 兜底
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = 'ja-JP'; u.rate = 0.85; u.pitch = 1.1;
   speechSynthesis.cancel();
-  const voice = pickVoice();
-
-  // 按标点拆成短语，逐段朗读以模拟自然断句
-  const phrases = clean.split(/(?<=[、。！？…〜])/g).filter(p => p.trim());
-  if (!phrases.length) phrases.push(clean);
-
-  let delay = 0;
-  phrases.forEach((phrase, i) => {
-    const u = new SpeechSynthesisUtterance(phrase.trim());
-    u.lang = 'ja-JP';
-    u.volume = 1;
-    if (voice) u.voice = voice;
-
-    // 每段微调音调：句尾降调，中间有起伏
-    const isEnd = i === phrases.length - 1;
-    u.pitch = isEnd ? 1.05 : (1.1 + Math.random() * 0.1);
-    u.rate = isEnd ? 0.78 : (0.82 + Math.random() * 0.06);
-
-    // 自然停顿：逗号短停，句号长停
-    const lastChar = phrase.trim().slice(-1);
-    if (i > 0) {
-      delay += lastChar === '。' || lastChar === '！' || lastChar === '？' ? 380 : 220;
-    }
-
-    setTimeout(() => speechSynthesis.speak(u), delay);
-    delay += (phrase.length * 80) + 100; // 估算每段朗读时长
-  });
+  speechSynthesis.speak(u);
 }
 
 // ===== Copy =====
