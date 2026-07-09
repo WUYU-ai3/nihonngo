@@ -655,40 +655,50 @@ function clearHistory() {
 }
 
 // ===== Speak =====
+let VOICES_READY = false;
+let JA_VOICES = [];
+
+function loadVoices() {
+  JA_VOICES = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
+  if (JA_VOICES.length) VOICES_READY = true;
+}
+speechSynthesis.onvoiceschanged = loadVoices;
+loadVoices();
+
 function speakJapanese(text) {
-  // 去括号注音、去絵文字
+  // 去括号注音
   let clean = text.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
-  clean = clean.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '');
-  clean = clean.replace(/[\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}]/gu, '');
+  // 去絵文字
+  clean = clean.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{200C}]/gu, '');
   clean = clean.trim();
   if (!clean) return;
 
+  // 重新加载声优列表
+  if (!VOICES_READY || !JA_VOICES.length) {
+    JA_VOICES = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
+  }
+
   const u = new SpeechSynthesisUtterance(clean);
   u.lang = 'ja-JP';
-  u.rate = 0.88;
-  u.pitch = 1.05;
   u.volume = 1;
 
-  // 选最佳日语声优：Kyoko（女）> Otoya（男）> 其他 ja-JP
-  const voices = speechSynthesis.getVoices();
-  const pref = ['Kyoko', 'Otoya', 'Hattori', 'O-ren', 'Luca'];
+  // 选最优声优：Google 日本語 > Kyoko > 其他女性日语声优
+  const female = JA_VOICES.filter(v => v.name.includes('Google') || !/(Otoya|Male|男)/.test(v.name));
+  const all = female.length ? female : JA_VOICES;
+  const pref = ['Google 日本語', 'Kyoko', 'Hattori', 'O-ren', 'Moira', 'Luca'];
   for (const name of pref) {
-    const v = voices.find(v => v.lang === 'ja-JP' && v.name.includes(name));
+    const v = all.find(v => v.name.includes(name));
     if (v) { u.voice = v; break; }
   }
-  // 兜底：任意日语声优
-  if (!u.voice) {
-    const v = voices.find(v => v.lang.startsWith('ja'));
-    if (v) u.voice = v;
-  }
+  if (!u.voice && all.length) u.voice = all[0];
+
+  // 动画风语调：稍高音、有起伏
+  u.pitch = 1.15;
+  u.rate = 0.82;
 
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
 }
-
-// 预加载声优列表（异步加载）
-speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
-speechSynthesis.getVoices();
 
 // ===== Copy =====
 async function copyText(text, buttonEl) {
