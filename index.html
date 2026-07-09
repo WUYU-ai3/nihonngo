@@ -89,6 +89,7 @@ body::before {
 .btn:hover { background: #f9f7f2; border-color: #ccc; color: var(--text); }
 .btn:active { transform: scale(0.97); }
 .btn-icon { font-size: 15px; }
+.btn-icon-only { padding: 8px 10px; min-width: unset; }
 
 .btn-primary {
   background: var(--primary); color: #fff; border-color: var(--primary);
@@ -96,9 +97,9 @@ body::before {
 }
 .btn-primary:hover { background: var(--primary-light); border-color: var(--primary-light); color: #fff; }
 
-.conn-status { font-size: 11px; padding: 3px 8px; border-radius: 10px; white-space: nowrap; display: flex; align-items: center; }
-.conn-status.ok { color: var(--sage); background: var(--sage-light); }
-.conn-status.err { color: var(--accent); background: var(--accent-soft); }
+.conn-status { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+.conn-status.ok { background: var(--sage); }
+.conn-status.err { background: var(--accent); }
 
 /* ===== Main Content ===== */
 .main {
@@ -189,6 +190,8 @@ body::before {
   flex-direction: column;
   gap: 12px;
 }
+.tc.kicchiri-card { border-left: 3px solid #6b8ab0; }
+.tc.frank-card   { border-left: 3px solid #c4956e; }
 .tc-header {
   display: flex; align-items: center; gap: 8px;
 }
@@ -397,17 +400,30 @@ body::before {
 
 /* ===== Responsive ===== */
 @media (max-width: 600px) {
-  .header { padding: 10px 14px; }
-  .header-title { font-size: 16px; }
-  .header-logo { font-size: 20px; }
-  .btn { padding: 6px 10px; font-size: 12px; }
-  .main { padding: 0 10px; }
-  .tc-japanese { font-size: 19px; }
-  .tv-japanese { font-size: 17px; }
-  .tc-hiragana { font-size: 14px; }
-  .tc-romaji { font-size: 12px; }
-  .input-field { font-size: 15px; }
-  .modal { padding: 20px; }
+  .header { padding: 8px 10px; }
+  .header-title { font-size: 15px; }
+  .btn { padding: 5px 8px; font-size: 11px; }
+  .btn-icon-only { padding: 5px 7px; }
+  .main { padding: 0 6px; }
+  .history { gap: 10px; padding: 10px 0; }
+  .translation-item { box-shadow: 0 1px 6px rgba(44,62,107,0.06); }
+  .ti-chinese { padding: 8px 12px; }
+  .ti-chinese-text { font-size: 14px; }
+  .tc { padding: 10px 12px; gap: 6px; }
+  .tc-header { margin-bottom: 0; }
+  .tc-badge { font-size: 10px; padding: 2px 7px; }
+  .tv { padding: 8px 0; }
+  .tv-badge { font-size: 9px; padding: 1px 6px; margin-bottom: 4px; }
+  .tv-japanese { font-size: 15px; line-height: 2.2; }
+  .tv-japanese rt { font-size: 0.45em; }
+  .tc-explanation { font-size: 10px; padding: 5px 8px; }
+  .tc-actions { margin-top: 0; }
+  .tc-copy-btn { font-size: 10px; padding: 3px 8px; }
+  .input-area { padding: 8px 0 12px; }
+  .input-field { font-size: 14px; padding: 6px 10px; }
+  .input-wrapper { padding: 3px; }
+  .btn-send { padding: 8px 14px; font-size: 13px; }
+  .modal { padding: 18px; }
 }
 </style>
 </head>
@@ -418,16 +434,16 @@ body::before {
   <div class="header-left">
     <div>
       <div class="header-title">日本語、盛っとく？</div>
-      <div class="header-subtitle">中文 → キッチリ & フランク</div>
+      <div class="header-subtitle">言語 → キッチリ & フランク</div>
     </div>
   </div>
   <div class="header-actions">
-    <span class="conn-status" id="connStatus">🔍 检测中...</span>
-    <button class="btn" onclick="openSettings()" title="API 设置">
-      <span class="btn-icon">⚙️</span> <span class="btn-label">API设置</span>
+    <span class="conn-status" id="connStatus"></span>
+    <button class="btn btn-icon-only" onclick="openSettings()" title="API 设置">
+      <span class="btn-icon">⚙️</span>
     </button>
-    <button class="btn" onclick="clearHistory()" title="清空历史">
-      <span class="btn-icon">🗑️</span> <span class="btn-label">清空</span>
+    <button class="btn btn-icon-only" onclick="clearHistory()" title="Clear">
+      <span class="btn-icon">🗑️</span>
     </button>
   </div>
 </header>
@@ -558,16 +574,15 @@ function checkConnection() {
 
   if (isDeployed) {
     API_URL = '/api/translate';
-    statusEl.textContent = '☁️ 线上';
+    statusEl.textContent = '';
     statusEl.className = 'conn-status ok';
   } else {
-    // 本地模式：快速测代理
-    statusEl.textContent = '✅ 本地';
+    statusEl.textContent = '';
     statusEl.className = 'conn-status ok';
-    API_URL = '/api/translate'; // 兜底
+    API_URL = '/api/translate';
     fetch('http://localhost:3001/health', { method: 'GET', signal: AbortSignal.timeout(1500) })
-      .then(r => { if (r.ok) { API_URL = 'http://localhost:3001'; statusEl.textContent = '✅ 本地'; } })
-      .catch(() => { statusEl.textContent = '⚠️ 代理未启动'; statusEl.className = 'conn-status err'; });
+      .then(r => { if (r.ok) API_URL = 'http://localhost:3001'; })
+      .catch(() => { statusEl.className = 'conn-status err'; });
   }
 }
 
@@ -642,7 +657,7 @@ async function copyText(text, buttonEl) {
   try {
     await navigator.clipboard.writeText(text);
     const originalHTML = buttonEl.innerHTML;
-    buttonEl.innerHTML = '✅ 已复制';
+    buttonEl.innerHTML = '✅ Copied';
     buttonEl.classList.add('copied');
     setTimeout(() => {
       buttonEl.innerHTML = originalHTML;
@@ -927,7 +942,7 @@ function renderVariant(label, labelClass, data) {
       <div class="tv-japanese">${toRuby(escapeHTML(data.japanese))}</div>
       ${hasExplanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
       <div class="tc-actions">
-        <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 复制</button>
+        <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 Copy</button>
       </div>
     </div>
   `;
@@ -936,7 +951,7 @@ function renderVariant(label, labelClass, data) {
 function renderKicchiri(d) {
   if (!d) return '';
   return `
-    <div class="tc">
+    <div class="tc kicchiri-card">
       <div class="tc-header">
         <span class="tc-badge kicchiri">👔 キッチリ</span>
       </div>
@@ -949,7 +964,7 @@ function renderKicchiri(d) {
 function renderFrank(d) {
   if (!d) return '';
   return `
-    <div class="tc">
+    <div class="tc frank-card">
       <div class="tc-header">
         <span class="tc-badge frank">😎 フランク</span>
       </div>
