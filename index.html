@@ -655,49 +655,60 @@ function clearHistory() {
 }
 
 // ===== Speak =====
-let VOICES_READY = false;
 let JA_VOICES = [];
 
 function loadVoices() {
   JA_VOICES = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
-  if (JA_VOICES.length) VOICES_READY = true;
 }
 speechSynthesis.onvoiceschanged = loadVoices;
 loadVoices();
 
-function speakJapanese(text) {
-  // 去括号注音
-  let clean = text.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
-  // 去絵文字
-  clean = clean.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{200C}]/gu, '');
-  clean = clean.trim();
-  if (!clean) return;
-
-  // 重新加载声优列表
-  if (!VOICES_READY || !JA_VOICES.length) {
-    JA_VOICES = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
-  }
-
-  const u = new SpeechSynthesisUtterance(clean);
-  u.lang = 'ja-JP';
-  u.volume = 1;
-
-  // 选最优声优：Google 日本語 > Kyoko > 其他女性日语声优
+function pickVoice() {
+  if (!JA_VOICES.length) JA_VOICES = speechSynthesis.getVoices().filter(v => v.lang.startsWith('ja'));
   const female = JA_VOICES.filter(v => v.name.includes('Google') || !/(Otoya|Male|男)/.test(v.name));
-  const all = female.length ? female : JA_VOICES;
+  const pool = female.length ? female : JA_VOICES;
   const pref = ['Google 日本語', 'Kyoko', 'Hattori', 'O-ren', 'Moira', 'Luca'];
   for (const name of pref) {
-    const v = all.find(v => v.name.includes(name));
-    if (v) { u.voice = v; break; }
+    const v = pool.find(v => v.name.includes(name));
+    if (v) return v;
   }
-  if (!u.voice && all.length) u.voice = all[0];
+  return pool[0] || null;
+}
 
-  // 动画风语调：稍高音、有起伏
-  u.pitch = 1.15;
-  u.rate = 0.82;
+function speakJapanese(text) {
+  // 去括号注音・去絵文字
+  let clean = text.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
+  clean = clean.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}\u{200C}]/gu, '').trim();
+  if (!clean) return;
 
   speechSynthesis.cancel();
-  speechSynthesis.speak(u);
+  const voice = pickVoice();
+
+  // 按标点拆成短语，逐段朗读以模拟自然断句
+  const phrases = clean.split(/(?<=[、。！？…〜])/g).filter(p => p.trim());
+  if (!phrases.length) phrases.push(clean);
+
+  let delay = 0;
+  phrases.forEach((phrase, i) => {
+    const u = new SpeechSynthesisUtterance(phrase.trim());
+    u.lang = 'ja-JP';
+    u.volume = 1;
+    if (voice) u.voice = voice;
+
+    // 每段微调音调：句尾降调，中间有起伏
+    const isEnd = i === phrases.length - 1;
+    u.pitch = isEnd ? 1.05 : (1.1 + Math.random() * 0.1);
+    u.rate = isEnd ? 0.78 : (0.82 + Math.random() * 0.06);
+
+    // 自然停顿：逗号短停，句号长停
+    const lastChar = phrase.trim().slice(-1);
+    if (i > 0) {
+      delay += lastChar === '。' || lastChar === '！' || lastChar === '？' ? 380 : 220;
+    }
+
+    setTimeout(() => speechSynthesis.speak(u), delay);
+    delay += (phrase.length * 80) + 100; // 估算每段朗读时长
+  });
 }
 
 // ===== Copy =====
