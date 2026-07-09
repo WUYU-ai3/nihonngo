@@ -272,6 +272,16 @@ body::before {
 }
 .tc-copy-btn:hover { background: #f9f7f2; border-color: #ccc; }
 .tc-copy-btn.copied { background: var(--sage-light); border-color: var(--sage); color: var(--sage); }
+.tc-speak-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; font-size: 16px;
+  border: 1px solid var(--border); border-radius: 50%;
+  background: var(--surface); cursor: pointer;
+  transition: all var(--transition);
+  line-height: 1;
+}
+.tc-speak-btn:hover { background: #f0ece4; border-color: #bbb; }
+.tc-speak-btn:active { transform: scale(0.92); background: #e8e0d4; }
 
 /* ===== Loading Skeleton ===== */
 .skeleton {
@@ -652,6 +662,17 @@ function clearHistory() {
   showToast('历史记录已清空', 'success');
 }
 
+// ===== Speak =====
+function speakJapanese(text) {
+  // 去掉括号里的假名注音，只读日文
+  const clean = text.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
+  const u = new SpeechSynthesisUtterance(clean);
+  u.lang = 'ja-JP';
+  u.rate = 0.85;
+  speechSynthesis.cancel();
+  speechSynthesis.speak(u);
+}
+
 // ===== Copy =====
 async function copyText(text, buttonEl) {
   try {
@@ -912,12 +933,16 @@ function createTranslationItem(entry) {
     </div>
   `;
 
-  // Attach copy handlers
+  // Attach copy + speak handlers
   el.querySelectorAll('.tc-copy-btn').forEach(btn => {
     btn.addEventListener('click', function() {
-      // Strip furigana parens for clean copy: 日本語(にほんご) → 日本語
       const raw = this.dataset.copy.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
       copyText(raw, this);
+    });
+  });
+  el.querySelectorAll('.tc-speak-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      speakJapanese(this.dataset.speak);
     });
   });
 
@@ -942,6 +967,7 @@ function renderVariant(label, labelClass, data) {
       <div class="tv-japanese">${toRuby(escapeHTML(data.japanese))}</div>
       ${hasExplanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
       <div class="tc-actions">
+        <button class="tc-speak-btn" data-speak="${escapeAttr(data.japanese)}" title="朗读">🔊</button>
         <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 Copy</button>
       </div>
     </div>
