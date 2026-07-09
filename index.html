@@ -272,16 +272,8 @@ body::before {
 }
 .tc-copy-btn:hover { background: #f9f7f2; border-color: #ccc; }
 .tc-copy-btn.copied { background: var(--sage-light); border-color: var(--sage); color: var(--sage); }
-.tc-speak-btn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; font-size: 16px;
-  border: 1px solid var(--border); border-radius: 50%;
-  background: var(--surface); cursor: pointer;
-  transition: all var(--transition);
-  line-height: 1;
-}
-.tc-speak-btn:hover { background: #f0ece4; border-color: #bbb; }
-.tc-speak-btn:active { transform: scale(0.92); background: #e8e0d4; }
+.tv-clickable { cursor: pointer; border-radius: var(--radius-xs); transition: background var(--transition); }
+.tv-clickable:hover { background: #fdf9f5; }
 
 /* ===== Loading Skeleton ===== */
 .skeleton {
@@ -664,14 +656,39 @@ function clearHistory() {
 
 // ===== Speak =====
 function speakJapanese(text) {
-  // 去掉括号里的假名注音，只读日文
-  const clean = text.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
+  // 去括号注音、去絵文字
+  let clean = text.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
+  clean = clean.replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE00}-\u{FE0F}\u{200D}]/gu, '');
+  clean = clean.replace(/[\u{1F600}-\u{1F64F}\u{1F680}-\u{1F6FF}\u{1F900}-\u{1F9FF}]/gu, '');
+  clean = clean.trim();
+  if (!clean) return;
+
   const u = new SpeechSynthesisUtterance(clean);
   u.lang = 'ja-JP';
-  u.rate = 0.85;
+  u.rate = 0.88;
+  u.pitch = 1.05;
+  u.volume = 1;
+
+  // 选最佳日语声优：Kyoko（女）> Otoya（男）> 其他 ja-JP
+  const voices = speechSynthesis.getVoices();
+  const pref = ['Kyoko', 'Otoya', 'Hattori', 'O-ren', 'Luca'];
+  for (const name of pref) {
+    const v = voices.find(v => v.lang === 'ja-JP' && v.name.includes(name));
+    if (v) { u.voice = v; break; }
+  }
+  // 兜底：任意日语声优
+  if (!u.voice) {
+    const v = voices.find(v => v.lang.startsWith('ja'));
+    if (v) u.voice = v;
+  }
+
   speechSynthesis.cancel();
   speechSynthesis.speak(u);
 }
+
+// 预加载声优列表（异步加载）
+speechSynthesis.onvoiceschanged = () => speechSynthesis.getVoices();
+speechSynthesis.getVoices();
 
 // ===== Copy =====
 async function copyText(text, buttonEl) {
@@ -935,13 +952,14 @@ function createTranslationItem(entry) {
 
   // Attach copy + speak handlers
   el.querySelectorAll('.tc-copy-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
       const raw = this.dataset.copy.replace(/\([^)]*\)/g, '').replace(/（[^）]*）/g, '');
       copyText(raw, this);
     });
   });
-  el.querySelectorAll('.tc-speak-btn').forEach(btn => {
-    btn.addEventListener('click', function() {
+  el.querySelectorAll('.tv-clickable').forEach(el => {
+    el.addEventListener('click', function() {
       speakJapanese(this.dataset.speak);
     });
   });
@@ -964,10 +982,9 @@ function renderVariant(label, labelClass, data) {
   return `
     <div class="tv">
       <span class="tv-badge ${labelClass}">${label}</span>
-      <div class="tv-japanese">${toRuby(escapeHTML(data.japanese))}</div>
+      <div class="tv-japanese tv-clickable" data-speak="${escapeAttr(data.japanese)}" title="点击朗读">${toRuby(escapeHTML(data.japanese))}</div>
       ${hasExplanation ? `<div class="tc-explanation">${escapeHTML(data.explanation)}</div>` : ''}
       <div class="tc-actions">
-        <button class="tc-speak-btn" data-speak="${escapeAttr(data.japanese)}" title="朗读">🔊</button>
         <button class="tc-copy-btn" data-copy="${escapeAttr(data.japanese)}">📋 Copy</button>
       </div>
     </div>
